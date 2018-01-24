@@ -13,9 +13,10 @@ const grid = [
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 ];
+const neighbors = [[-1, 1], [0, 1], [1, 1], [-1, 0], [1, 0], [-1, -1], [0, -1], [1, -1]];
 function Diagonal(a, b) {
     return Math.sqrt(a.x * a.x + a.y * a.y);
 }
-const out = AStar_1.AStar(new AStar_1.GridPosition(4, 4), new AStar_1.GridPosition(8, 4), grid, Diagonal);
+const out = AStar_1.AStar(new AStar_1.GridPosition(4, 4), new AStar_1.GridPosition(8, 4), grid, Diagonal, neighbors);
 console.log(out.toString());
 //# sourceMappingURL=Test.js.map

@@ -77,6 +77,7 @@ function GeneratePage() {
     const generateButton = document.getElementById("generate");
     const runButton = document.getElementById("run");
     const mouseGridElement = document.getElementById("mousegrid");
+    const gridElement = document.getElementById("grid");
     mouseGridElement.addEventListener("mousedown", MouseDownOnGridEvent);
     mouseGridElement.addEventListener("mousemove", MouseDownOnGridEvent);
     function MouseDownOnGridEvent(event) {
@@ -84,7 +85,7 @@ function GeneratePage() {
             const row = Math.floor((event.offsetX / this.clientWidth) * screenMap.width);
             const column = Math.floor((event.offsetY / this.clientHeight) * screenMap.height);
             SetGrid(screenMap, row, column);
-            UpdateGrid(document.getElementById("grid"));
+            UpdateGrid(gridElement);
             document.getElementById("gridx").textContent = ((event.offsetX / this.clientWidth) * screenMap.width).toString();
             document.getElementById("gridy").textContent = ((event.offsetY / this.clientHeight) * screenMap.height).toString();
         }
@@ -119,25 +120,31 @@ function GeneratePage() {
         }
     }
     function UpdateGrid(element) {
-        const grid = screenMap;
         const children = Array.from(element.children);
         for (const child of children) {
             const x = +child.getAttribute("x");
             const y = +child.getAttribute("y");
-            if (grid.start && grid.start.x === x && grid.start.y === y) {
+            if (screenMap.start && screenMap.start.x === x && screenMap.start.y === y) {
                 child.className = "gridSpace start";
             }
-            else if (grid.goal && grid.goal.x === x && grid.goal.y === y) {
+            else if (screenMap.goal && screenMap.goal.x === x && screenMap.goal.y === y) {
                 child.className = "gridSpace goal";
             }
-            else if (grid.grid[x][y] === 0) {
+            else if (screenMap.grid[x][y] === 0) {
                 child.className = "gridSpace open";
             }
-            else if (grid.grid[x][y] === 1) {
+            else if (screenMap.grid[x][y] === 1) {
                 child.className = "gridSpace blocked";
             }
-            else if (grid.grid[x][y] === 2) {
+            else if (screenMap.grid[x][y] === 2) {
                 child.className = "gridSpace path";
+            }
+            if (screenMap.results) {
+                const result = screenMap.results.history[x][y];
+                child.children.item(0).textContent = result.pos.toString();
+                child.children.item(1).textContent = "g: " + Math.round(result.g * 100) / 100;
+                child.children.item(2).textContent = "h: " + Math.round(result.h * 100) / 100;
+                child.children.item(3).textContent = "f: " + Math.round(result.f * 100) / 100;
             }
         }
     }
@@ -152,7 +159,7 @@ function GeneratePage() {
             height: getNumber(document.getElementById("height")),
             start: undefined,
             goal: undefined,
-            path: undefined
+            results: undefined
         };
         const grid = [];
         for (let row = 0; row < map.width; row++) {
@@ -163,7 +170,7 @@ function GeneratePage() {
         }
         screenMap = map;
         screenMap.grid = grid;
-        GenerateGrid(document.getElementById("grid"), screenMap.width, screenMap.height);
+        GenerateGrid(gridElement, screenMap.width, screenMap.height);
     }
     function GenerateGrid(el, rows, columns) {
         while (el.lastChild) {
@@ -184,31 +191,39 @@ function GeneratePage() {
         element.className = "gridSpace open";
         element.setAttribute("x", x.toString());
         element.setAttribute("y", y.toString());
+        element.appendChild(document.createElement("p"));
+        element.appendChild(document.createElement("p"));
+        element.appendChild(document.createElement("p"));
+        element.appendChild(document.createElement("p"));
         return element;
     }
     runButton.addEventListener("click", () => {
         if (screenMap !== undefined) {
-            ClearPath(document.getElementById("grid"));
-            const path = AStar_1.AStar(screenMap.start, screenMap.goal, screenMap.grid, Diagonal);
-            for (const space of path) {
+            ClearPath();
+            const heuristicStr = document.getElementById("heuristic").value;
+            let heuristic = eval(heuristicStr);
+            //if (!(heuristic instanceof Function))
+            //    heuristic = Diagonal;
+            const neighborsStr = document.getElementById("neighbors").value;
+            let neighbors = eval(neighborsStr);
+            //if (!(neighbors instanceof Array))
+            //    neighbors = [[-1, 1], [0, 1], [1, 1], [-1, 0], [1, 0], [-1, -1], [0, -1], [1, -1]];
+            screenMap.results = AStar_1.AStar(screenMap.start, screenMap.goal, screenMap.grid, heuristic, neighbors);
+            for (const space of screenMap.results.path) {
                 screenMap.grid[space.x][space.y] = 2;
             }
-            UpdateGrid(document.getElementById("grid"));
+            UpdateGrid(gridElement);
         }
     });
     function Diagonal(a, b) {
-        return Math.sqrt(a.x * b.x + a.y * b.y);
+        return Math.sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y));
     }
-    function ClearPath(element) {
+    function ClearPath() {
         const grid = screenMap;
-        const children = Array.from(element.children);
-        for (const child of children) {
-            const x = +child.getAttribute("x");
-            const y = +child.getAttribute("y");
-            if (grid.grid[x][y] === 2) {
-                child.className = "gridSpace open";
-            }
-        }
+        for (let row = 0; row < screenMap.width; row++)
+            for (let column = 0; column < screenMap.height; column++)
+                if (grid.grid[row][column] === 2)
+                    grid.grid[row][column] = 0;
     }
 }
 //# sourceMappingURL=Page.js.map
@@ -244,9 +259,10 @@ class Node {
         return this.g + this.h;
     }
     toString() {
-        return "(" + this.pos.toString() + " g: " + this.g + " h: " + this.h + " f: " + this.f + ")";
+        return this.pos.toString() + " g: " + Math.round(this.g * 100) / 100 + " h: " + Math.round(this.h * 100) / 100 + " f: " + Math.round(this.f * 100) / 100;
     }
 }
+exports.Node = Node;
 function smallestFIndex(list) {
     let smallest = 0;
     for (let index = 1; index < list.length; index++) {
@@ -255,18 +271,13 @@ function smallestFIndex(list) {
     }
     return smallest;
 }
-function generateEdges(parent, grid, maxX, maxY) {
+function generateEdges(parent, grid, maxX, maxY, neighbors) {
     const edges = [];
-    const directions = [
-        [-1, 1, 1.41], [0, 1, 1], [1, 1, 1.41],
-        [-1, 0, 1], [1, 0, 1],
-        [-1, -1, 1.41], [0, -1, 1], [1, -1, 1.41]
-    ];
-    for (const dir of directions) {
+    for (const dir of neighbors) {
         const posx = parent.pos.x + dir[0];
         const posy = parent.pos.y + dir[1];
         if (posx >= 0 && posx < maxX && posy >= 0 && posy < maxY && grid[posx][posy] !== 1) {
-            edges.push(new Node(new GridPosition(posx, posy), parent.g + dir[2], parent));
+            edges.push(new Node(new GridPosition(posx, posy), parent.g, parent));
         }
     }
     return edges;
@@ -286,7 +297,14 @@ function constructPath(end) {
     }
     return path;
 }
-function AStar(start, goal, grid, dist) {
+function AStar(start, goal, grid, dist, neighbors) {
+    const historyGrid = [];
+    for (let row = 0; row < grid.length; row++) {
+        historyGrid.push([]);
+        for (let column = 0; column < grid[row].length; column++) {
+            historyGrid[row].push(new Node(new GridPosition(row, column), 0));
+        }
+    }
     const open = [new Node(start, 0)];
     const closed = [];
     const maxX = grid.length;
@@ -295,11 +313,15 @@ function AStar(start, goal, grid, dist) {
         const qIndex = smallestFIndex(open);
         const q = open[qIndex];
         open.splice(qIndex, 1);
-        const edges = generateEdges(q, grid, maxX, maxY);
+        const edges = generateEdges(q, grid, maxX, maxY, neighbors);
         for (const edge of edges) {
             if (edge.pos.equals(goal)) {
-                return constructPath(edge);
+                return {
+                    path: constructPath(edge),
+                    history: historyGrid
+                };
             }
+            edge.g = dist(edge.pos, q.pos);
             edge.h = dist(edge.pos, goal);
             if (has(edge, closed))
                 continue;
@@ -310,13 +332,22 @@ function AStar(start, goal, grid, dist) {
                 if (edge.f < node.f) {
                     node.g = edge.g;
                     node.h = edge.h;
+                    historyGrid[edge.pos.x][edge.pos.y].g = edge.g;
+                    historyGrid[edge.pos.x][edge.pos.y].h = edge.h;
                 }
             }
-            else
+            else {
                 open.push(edge);
+                historyGrid[edge.pos.x][edge.pos.y].g = edge.g;
+                historyGrid[edge.pos.x][edge.pos.y].h = edge.h;
+            }
         }
         closed.push(q);
     }
+    return {
+        path: [],
+        history: historyGrid
+    };
 }
 exports.AStar = AStar;
 //# sourceMappingURL=AStar.js.map

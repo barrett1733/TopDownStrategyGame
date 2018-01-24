@@ -1,3 +1,8 @@
+export interface AStarResults {
+    history: Node[][];
+    path: GridPosition[];
+}
+
 export type Distance = (a: GridPosition, b: GridPosition) => number;
 
 export class GridPosition {
@@ -10,7 +15,7 @@ export class GridPosition {
     }
 }
 
-class Node {
+export class Node {
     public pos: GridPosition;
     public g: number;
     public h: number;
@@ -28,7 +33,7 @@ class Node {
     }
 
     public toString(): string {
-        return "(" + this.pos.toString() + " g: " + this.g + " h: " + this.h + " f: " + this.f + ")";
+        return this.pos.toString() + " g: " + Math.round(this.g * 100) / 100 + " h: " + Math.round(this.h * 100) / 100 + " f: " + Math.round(this.f * 100) / 100;
     }
 }
 
@@ -41,19 +46,13 @@ function smallestFIndex(list: Node[]): number {
     return smallest;
 }
 
-function generateEdges(parent: Node, grid: number[][], maxX: number, maxY: number): Node[] {
+function generateEdges(parent: Node, grid: number[][], maxX: number, maxY: number, neighbors: number[][]): Node[] {
     const edges = [];
-    const directions = [
-        [-1, 1, 1.41], [0, 1, 1], [1, 1, 1.41],
-        [-1, 0, 1], [1, 0, 1],
-        [-1, -1, 1.41], [0, -1, 1], [1, -1, 1.41]
-    ];
-
-    for (const dir of directions) {
+    for (const dir of neighbors) {
         const posx = parent.pos.x + dir[0];
         const posy = parent.pos.y + dir[1];
         if (posx >= 0 && posx < maxX && posy >= 0 && posy < maxY && grid[posx][posy] !== 1) {
-            edges.push(new Node(new GridPosition(posx, posy), parent.g + dir[2], parent));
+            edges.push(new Node(new GridPosition(posx, posy), parent.g, parent));
         }
     }
     return edges;
@@ -76,7 +75,15 @@ function constructPath(end: Node): GridPosition[] {
     return path;
 }
 
-export function AStar(start: GridPosition, goal: GridPosition, grid: number[][], dist: Distance) {
+export function AStar(start: GridPosition, goal: GridPosition, grid: number[][], dist: Distance, neighbors: number[][]): AStarResults {
+    const historyGrid: Node[][] = [];
+    for (let row = 0; row < grid.length; row++) {
+        historyGrid.push([]);
+        for (let column = 0; column < grid[row].length; column++) {
+            historyGrid[row].push(new Node(new GridPosition(row, column), 0));
+        }
+    }
+
     const open = [new Node(start, 0)];
     const closed = [];
     const maxX = grid.length;
@@ -85,12 +92,16 @@ export function AStar(start: GridPosition, goal: GridPosition, grid: number[][],
         const qIndex = smallestFIndex(open);
         const q = open[qIndex];
         open.splice(qIndex, 1);
-        const edges = generateEdges(q, grid, maxX, maxY);
+        const edges = generateEdges(q, grid, maxX, maxY, neighbors);
 
         for (const edge of edges) {
             if (edge.pos.equals(goal)) {
-                return constructPath(edge);
+                return {
+                    path: constructPath(edge),
+                    history: historyGrid
+                };
             }
+            edge.g = dist(edge.pos, q.pos);
             edge.h = dist(edge.pos, goal);
             if (has(edge, closed))
                 continue;
@@ -102,12 +113,21 @@ export function AStar(start: GridPosition, goal: GridPosition, grid: number[][],
                 if (edge.f < node.f) {
                     node.g = edge.g;
                     node.h = edge.h;
+                    historyGrid[edge.pos.x][edge.pos.y].g = edge.g;
+                    historyGrid[edge.pos.x][edge.pos.y].h = edge.h;
                 }
             }
-            else
+            else {
                 open.push(edge);
+                historyGrid[edge.pos.x][edge.pos.y].g = edge.g;
+                historyGrid[edge.pos.x][edge.pos.y].h = edge.h;
+            }
         }
 
         closed.push(q);
     }
+    return {
+        path: [],
+        history: historyGrid
+    };
 }

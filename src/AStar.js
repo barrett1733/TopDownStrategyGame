@@ -24,9 +24,10 @@ class Node {
         return this.g + this.h;
     }
     toString() {
-        return "(" + this.pos.toString() + " g: " + this.g + " h: " + this.h + " f: " + this.f + ")";
+        return this.pos.toString() + " g: " + Math.round(this.g * 100) / 100 + " h: " + Math.round(this.h * 100) / 100 + " f: " + Math.round(this.f * 100) / 100;
     }
 }
+exports.Node = Node;
 function smallestFIndex(list) {
     let smallest = 0;
     for (let index = 1; index < list.length; index++) {
@@ -35,18 +36,13 @@ function smallestFIndex(list) {
     }
     return smallest;
 }
-function generateEdges(parent, grid, maxX, maxY) {
+function generateEdges(parent, grid, maxX, maxY, neighbors) {
     const edges = [];
-    const directions = [
-        [-1, 1, 1.41], [0, 1, 1], [1, 1, 1.41],
-        [-1, 0, 1], [1, 0, 1],
-        [-1, -1, 1.41], [0, -1, 1], [1, -1, 1.41]
-    ];
-    for (const dir of directions) {
+    for (const dir of neighbors) {
         const posx = parent.pos.x + dir[0];
         const posy = parent.pos.y + dir[1];
         if (posx >= 0 && posx < maxX && posy >= 0 && posy < maxY && grid[posx][posy] !== 1) {
-            edges.push(new Node(new GridPosition(posx, posy), parent.g + dir[2], parent));
+            edges.push(new Node(new GridPosition(posx, posy), parent.g, parent));
         }
     }
     return edges;
@@ -66,7 +62,14 @@ function constructPath(end) {
     }
     return path;
 }
-function AStar(start, goal, grid, dist) {
+function AStar(start, goal, grid, dist, neighbors) {
+    const historyGrid = [];
+    for (let row = 0; row < grid.length; row++) {
+        historyGrid.push([]);
+        for (let column = 0; column < grid[row].length; column++) {
+            historyGrid[row].push(new Node(new GridPosition(row, column), 0));
+        }
+    }
     const open = [new Node(start, 0)];
     const closed = [];
     const maxX = grid.length;
@@ -75,11 +78,15 @@ function AStar(start, goal, grid, dist) {
         const qIndex = smallestFIndex(open);
         const q = open[qIndex];
         open.splice(qIndex, 1);
-        const edges = generateEdges(q, grid, maxX, maxY);
+        const edges = generateEdges(q, grid, maxX, maxY, neighbors);
         for (const edge of edges) {
             if (edge.pos.equals(goal)) {
-                return constructPath(edge);
+                return {
+                    path: constructPath(edge),
+                    history: historyGrid
+                };
             }
+            edge.g = dist(edge.pos, q.pos);
             edge.h = dist(edge.pos, goal);
             if (has(edge, closed))
                 continue;
@@ -90,13 +97,22 @@ function AStar(start, goal, grid, dist) {
                 if (edge.f < node.f) {
                     node.g = edge.g;
                     node.h = edge.h;
+                    historyGrid[edge.pos.x][edge.pos.y].g = edge.g;
+                    historyGrid[edge.pos.x][edge.pos.y].h = edge.h;
                 }
             }
-            else
+            else {
                 open.push(edge);
+                historyGrid[edge.pos.x][edge.pos.y].g = edge.g;
+                historyGrid[edge.pos.x][edge.pos.y].h = edge.h;
+            }
         }
         closed.push(q);
     }
+    return {
+        path: [],
+        history: historyGrid
+    };
 }
 exports.AStar = AStar;
 //# sourceMappingURL=AStar.js.map

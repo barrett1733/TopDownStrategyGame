@@ -24,6 +24,11 @@ body {
     border: 1px solid black;
 }
 
+div.gridSpace p {
+    color: black;
+    margin: 0px;
+}
+
 .open {
     background-color: wheat;
 }

@@ -1,8 +1,8 @@
-import { AStar, GridPosition } from './AStar';
+import { AStar, AStarResults, GridPosition } from './AStar';
 
 interface ScreenMap<T> {
     grid: T[][];
-    path: GridPosition[]
+    results: AStarResults;
     width: number;
     height: number;
     start: GridPosition;
@@ -16,6 +16,7 @@ function GeneratePage() {
     const generateButton = document.getElementById("generate");
     const runButton = document.getElementById("run");
     const mouseGridElement = document.getElementById("mousegrid");
+    const gridElement = document.getElementById("grid") as HTMLDivElement;
 
     mouseGridElement.addEventListener("mousedown", MouseDownOnGridEvent);
     mouseGridElement.addEventListener("mousemove", MouseDownOnGridEvent);
@@ -25,7 +26,7 @@ function GeneratePage() {
             const row = Math.floor((event.offsetX / this.clientWidth) * screenMap.width);
             const column = Math.floor((event.offsetY / this.clientHeight) * screenMap.height);
             SetGrid(screenMap, row, column);
-            UpdateGrid(document.getElementById("grid") as HTMLDivElement);
+            UpdateGrid(gridElement);
             document.getElementById("gridx").textContent = ((event.offsetX / this.clientWidth) * screenMap.width).toString();
             document.getElementById("gridy").textContent = ((event.offsetY / this.clientHeight) * screenMap.height).toString();
         }
@@ -63,25 +64,32 @@ function GeneratePage() {
     }
 
     function UpdateGrid(element: HTMLDivElement) {
-        const grid = screenMap
         const children = Array.from(element.children) as HTMLDivElement[];
         for (const child of children) {
             const x = +child.getAttribute("x");
             const y = +child.getAttribute("y");
-            if (grid.start && grid.start.x === x && grid.start.y === y) {
+            if (screenMap.start && screenMap.start.x === x && screenMap.start.y === y) {
                 child.className = "gridSpace start";
             }
-            else if (grid.goal && grid.goal.x === x && grid.goal.y === y) {
+            else if (screenMap.goal && screenMap.goal.x === x && screenMap.goal.y === y) {
                 child.className = "gridSpace goal";
             }
-            else if (grid.grid[x][y] === 0) {
+            else if (screenMap.grid[x][y] === 0) {
                 child.className = "gridSpace open";
             }
-            else if (grid.grid[x][y] === 1) {
+            else if (screenMap.grid[x][y] === 1) {
                 child.className = "gridSpace blocked";
             }
-            else if (grid.grid[x][y] === 2) {
+            else if (screenMap.grid[x][y] === 2) {
                 child.className = "gridSpace path";
+            }
+
+            if (screenMap.results) {
+                const result = screenMap.results.history[x][y];
+                child.children.item(0).textContent = result.pos.toString();
+                child.children.item(1).textContent = "g: " + Math.round(result.g * 100) / 100;
+                child.children.item(2).textContent = "h: " + Math.round(result.h * 100) / 100;
+                child.children.item(3).textContent = "f: " + Math.round(result.f * 100) / 100;
             }
         }
     }
@@ -99,7 +107,7 @@ function GeneratePage() {
             height: getNumber(document.getElementById("height") as HTMLInputElement),
             start: undefined,
             goal: undefined,
-            path: undefined
+            results: undefined
         };
         const grid = [];
         for (let row = 0; row < map.width; row++) {
@@ -111,7 +119,7 @@ function GeneratePage() {
 
         screenMap = map;
         screenMap.grid = grid;
-        GenerateGrid(document.getElementById("grid") as HTMLDivElement, screenMap.width, screenMap.height);
+        GenerateGrid(gridElement, screenMap.width, screenMap.height);
     }
 
     function GenerateGrid(el: HTMLDivElement, rows: number, columns: number) {
@@ -134,34 +142,43 @@ function GeneratePage() {
         element.className = "gridSpace open";
         element.setAttribute("x", x.toString());
         element.setAttribute("y", y.toString());
+        element.appendChild(document.createElement("p"));
+        element.appendChild(document.createElement("p"));
+        element.appendChild(document.createElement("p"));
+        element.appendChild(document.createElement("p"));
         return element;
     }
 
     runButton.addEventListener("click", () => {
         if (screenMap !== undefined) {
-            ClearPath(document.getElementById("grid") as HTMLDivElement);
-            const path = AStar(screenMap.start, screenMap.goal, screenMap.grid, Diagonal);
-            for (const space of path) {
+            ClearPath();
+            const heuristicStr = (document.getElementById("heuristic") as HTMLTextAreaElement).value;
+            let heuristic = eval(heuristicStr);
+            //if (!(heuristic instanceof Function))
+            //    heuristic = Diagonal;
+
+            const neighborsStr = (document.getElementById("neighbors") as HTMLTextAreaElement).value;
+            let neighbors = eval(neighborsStr);
+            //if (!(neighbors instanceof Array))
+            //    neighbors = [[-1, 1], [0, 1], [1, 1], [-1, 0], [1, 0], [-1, -1], [0, -1], [1, -1]];
+                
+            screenMap.results = AStar(screenMap.start, screenMap.goal, screenMap.grid, heuristic, neighbors);
+            for (const space of screenMap.results.path) {
                 screenMap.grid[space.x][space.y] = 2;
             }
-            UpdateGrid(document.getElementById("grid") as HTMLDivElement);
+            UpdateGrid(gridElement);
         }
     });
 
     function Diagonal(a: GridPosition, b: GridPosition): number {
-        return Math.sqrt(a.x * b.x + a.y * b.y);
+        return Math.sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y));
     }
 
-    function ClearPath(element: HTMLDivElement) {
+    function ClearPath() {
         const grid = screenMap;
-        const children = Array.from(element.children) as HTMLDivElement[];
-        for (const child of children) {
-            const x = +child.getAttribute("x");
-            const y = +child.getAttribute("y");
-            if (grid.grid[x][y] === 2) {
-                child.className = "gridSpace open";
-            }
-        }
+        for (let row = 0; row < screenMap.width; row++)
+            for (let column = 0; column < screenMap.height; column++)
+                if (grid.grid[row][column] === 2)
+                    grid.grid[row][column] = 0;
     }
-
 }
