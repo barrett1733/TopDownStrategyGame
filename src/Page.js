@@ -126,6 +126,10 @@ function GeneratePage() {
         element.appendChild(document.createElement("p"));
         element.appendChild(document.createElement("p"));
         element.appendChild(document.createElement("p"));
+        for (let childIndex = 0; childIndex < element.children.length; childIndex++) {
+            const child = element.children.item(childIndex);
+            child.style.visibility = hideStats.checked ? "hidden" : "visible";
+        }
         return element;
     }
     runButton.addEventListener("click", () => {
