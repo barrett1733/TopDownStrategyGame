@@ -78,6 +78,7 @@ function GeneratePage() {
     const runButton = document.getElementById("run");
     const mouseGridElement = document.getElementById("mousegrid");
     const gridElement = document.getElementById("grid");
+    const hideStats = document.getElementById("hideStats");
     mouseGridElement.addEventListener("mousedown", MouseDownOnGridEvent);
     mouseGridElement.addEventListener("mousemove", MouseDownOnGridEvent);
     function MouseDownOnGridEvent(event) {
@@ -86,13 +87,13 @@ function GeneratePage() {
             const column = Math.floor((event.offsetY / this.clientHeight) * screenMap.height);
             SetGrid(screenMap, row, column);
             UpdateGrid(gridElement);
-            document.getElementById("gridx").textContent = ((event.offsetX / this.clientWidth) * screenMap.width).toString();
-            document.getElementById("gridy").textContent = ((event.offsetY / this.clientHeight) * screenMap.height).toString();
+            //document.getElementById("gridx").textContent = ((event.offsetX / this.clientWidth) * screenMap.width).toString();
+            //document.getElementById("gridy").textContent = ((event.offsetY / this.clientHeight) * screenMap.height).toString();
         }
-        document.getElementById("mousex").textContent = event.offsetX.toString();
-        document.getElementById("mousey").textContent = event.offsetY.toString();
-        document.getElementById("clientw").textContent = this.clientWidth.toString();
-        document.getElementById("clienth").textContent = this.clientHeight.toString();
+        //document.getElementById("mousex").textContent = event.offsetX.toString();
+        //document.getElementById("mousey").textContent = event.offsetY.toString();
+        //document.getElementById("clientw").textContent = this.clientWidth.toString();
+        //document.getElementById("clienth").textContent = this.clientHeight.toString();
     }
     function SetGrid(map, row, column) {
         const spaceTypes = document.getElementsByName("spaceType").values();
@@ -224,6 +225,17 @@ function GeneratePage() {
             for (let column = 0; column < screenMap.height; column++)
                 if (grid.grid[row][column] === 2)
                     grid.grid[row][column] = 0;
+    }
+    hideStats.addEventListener("click", HideStats);
+    function HideStats() {
+        const gridSpaces = document.getElementsByClassName("gridSpace");
+        for (let spaceIndex = 0; spaceIndex < gridSpaces.length; spaceIndex++) {
+            const space = gridSpaces.item(spaceIndex);
+            for (let childIndex = 0; childIndex < space.children.length; childIndex++) {
+                const child = space.children.item(childIndex);
+                child.style.visibility = this.checked ? "hidden" : "visible";
+            }
+        }
     }
 }
 //# sourceMappingURL=Page.js.map

@@ -24,6 +24,7 @@
         <button id="run">Run</button>
         <br>
         <br>
+        Hide Stats<input type="checkbox" id="hideStats"><br>
         Open<input type="radio" name="spaceType" value="open" checked><br>
         Blocked<input type="radio" name="spaceType" value="blocked"><br>
         Start<input type="radio" name="spaceType" value="start"><br>
@@ -36,7 +37,7 @@
         <div id="gridx"></div>
         <div id="gridy"></div>
         <br>-->
-        <textarea id="heuristic">(a, b) => { return Math.sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y)); }</textarea>
+        <textarea id="heuristic">(node, goal) => { const dx = Math.abs(node.x - goal.x); const dy = Math.abs(node.y - goal.y); return (dx + dy) + (1.41 - 2) * Math.min(dx, dy) }</textarea>
         <textarea id="neighbors">[[-1, 1], [0, 1], [1, 1], [-1, 0], [1, 0], [-1, -1], [0, -1], [1, -1]]</textarea>
     </div>
 </body>
